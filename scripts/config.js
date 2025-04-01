@@ -1,3 +1,4 @@
 export default ({
-    commandPrefix : ".",
+    cutAll: true,
+    mineAll: true,
 });
