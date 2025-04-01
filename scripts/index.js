@@ -1,5 +1,5 @@
 // @ts-check
-import { ItemStack, world, system, Block, Player, EquipmentSlot, EnchantmentType, EnchantmentTypes } from "@minecraft/server";
+import { ItemStack, world, system, Block, Player, EquipmentSlot, GameMode } from "@minecraft/server";
 import { MinecraftEnchantmentTypes } from "./lib/index.js";
 import { getDropAmountWithFortune, getOreDropAmount, getOreDropItem } from "./utils.js";
 import config from "./config.js";
@@ -71,6 +71,8 @@ const searchAllDirections = function*(block, blockId, itemId, player, fortuneLev
 world.beforeEvents.playerBreakBlock.subscribe((ev) => {
     const { block, player, itemStack } = ev;
 
+    if(player.getGameMode() !== GameMode.survival) return;
+    
     //CutAll
     if(config.cutAll){
         const cutAll = player.getDynamicProperty("cutAll");
