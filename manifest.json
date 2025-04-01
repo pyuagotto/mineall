@@ -1,0 +1,25 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Mine All",
+    "description": "BetaAPIs",
+    "uuid": "1a4fbcb0-d10c-3827-b1ac-ebc12210cf6e",
+    "version": [0, 1, 0],
+    "min_engine_version": [ 1, 20, 40 ]
+  },
+  "modules": [
+    {
+      "description": "GameTest module",
+      "type": "script",
+      "uuid": "1111ca3a-0b4b-532e-8ac2-e7ea2a24523d",
+      "version": [0, 1, 0],
+      "entry": "scripts/index.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.18.0"
+    }
+  ]
+}
