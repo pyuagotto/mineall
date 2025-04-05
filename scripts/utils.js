@@ -1,4 +1,49 @@
 //@ts-check
+// ツールと鉱石のレベルマッピング
+const toolLevels = {
+    "minecraft:wooden_pickaxe": 1,
+    "minecraft:gold_pickaxe": 1,
+    "minecraft:stone_pickaxe": 2,
+    "minecraft:iron_pickaxe": 3,
+    "minecraft:diamond_pickaxe": 3,
+    "minecraft:netherite_pickaxe": 3
+};
+
+const oreLevels = {
+    "minecraft:coal_ore": 1,
+    "minecraft:deepslate_coal_ore": 1,
+    "minecraft:nether_gold_ore": 1,
+    "minecraft:quartz_ore": 1,
+    "minecraft:copper_ore": 2,
+    "minecraft:deepslate_copper_ore": 2,
+    "minecraft:iron_ore": 2,
+    "minecraft:deepslate_iron_ore": 2,
+    "minecraft:lapis_ore": 2,
+    "minecraft:deepslate_lapis_ore": 2,
+    "minecraft:gold_ore": 3,
+    "minecraft:deepslate_gold_ore": 3,
+    "minecraft:diamond_ore": 3,
+    "minecraft:deepslate_diamond_ore": 3,
+    "minecraft:emerald_ore": 3,
+    "minecraft:deepslate_emerald_ore": 3,
+    "minecraft:lit_redstone_ore": 3,
+    "minecraft:redstone_ore": 3,
+    "minecraft:lit_deepslate_redstone_ore": 3,
+    "minecraft:deepslate_redstone_ore": 3
+};
+
+/**
+ * ツールのレベルと鉱石のレベルを比較し、適切かどうかを判定する関数
+ * @param {String} toolId ツールのID
+ * @param {String} oreId 鉱石のID
+ * @returns {boolean} ツールが鉱石を採掘できる場合はtrue、それ以外はfalse
+ */
+export const isAppropriateTool = function(toolId, oreId) {
+    const toolLevel = toolLevels[toolId] || 0;
+    const oreLevel = oreLevels[oreId] || 0;
+    return toolLevel >= oreLevel;
+};
+
 /**
  * 
  * @param {Number} level 

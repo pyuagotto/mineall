@@ -1,8 +1,9 @@
 // @ts-check
 import { ItemStack, world, system, Block, Player, EquipmentSlot, GameMode } from "@minecraft/server";
 import { MinecraftEnchantmentTypes } from "./lib/index.js";
-import { getDropAmountWithFortune, getOreDropAmount, getOreDropItem } from "./utils.js";
+import { getDropAmountWithFortune, getOreDropAmount, getOreDropItem, isAppropriateTool } from "./utils.js";
 import config from "./config.js";
+import toJson from "./toJson.js";
 
 /**
  * 
@@ -55,10 +56,23 @@ const searchAllDirections = function*(block, blockId, itemId, player, fortuneLev
                     amount = 1;
                 }
 
-                const dropAmount = fortuneLevel ? getDropAmountWithFortune(fortuneLevel, isRedstoneOre || isDeepslateRedstoneOre) : 1;
+                let dropProbability = 1;
 
-                const totalAmount = isRedstoneOre || isDeepslateRedstoneOre ? dropAmount : amount * dropAmount;
-                    player.dimension.spawnItem(new ItemStack(itemId, totalAmount), player.location);
+                //幸運の場合
+                if(fortuneLevel){
+                    if(isRedstoneOre || isDeepslateRedstoneOre){
+                        amount = getDropAmountWithFortune(fortuneLevel, isRedstoneOre || isDeepslateRedstoneOre);
+                        player.dimension.spawnItem(new ItemStack(itemId, amount), player.location);
+                    }else{
+                        dropProbability = getDropAmountWithFortune(fortuneLevel, isRedstoneOre || isDeepslateRedstoneOre);
+                        player.dimension.spawnItem(new ItemStack(itemId, amount * dropProbability), player.location);
+                    }
+                }
+                
+                //幸運以外
+                else{
+                    player.dimension.spawnItem(new ItemStack(itemId, amount), player.location);
+                }
                 
                 queue.push(targetBlock);
             }
@@ -71,7 +85,7 @@ const searchAllDirections = function*(block, blockId, itemId, player, fortuneLev
 world.beforeEvents.playerBreakBlock.subscribe((ev) => {
     const { block, player, itemStack } = ev;
 
-    if(player.getGameMode() !== GameMode.survival) return;
+    //if(player.getGameMode() !== GameMode.survival) return;
     
     //CutAll
     if(config.cutAll){
@@ -91,7 +105,8 @@ world.beforeEvents.playerBreakBlock.subscribe((ev) => {
     
             //鉱石
             if (block.typeId.includes("_ore")) {
-    
+                if(!isAppropriateTool(itemStack?.typeId, block.typeId)) return;
+
                 //シルクタッチ
                 if (enchantable?.hasEnchantment(MinecraftEnchantmentTypes.SilkTouch)) {
                     let itemId = "";
@@ -135,6 +150,10 @@ world.afterEvents.playerSpawn.subscribe((ev) => {
 world.afterEvents.itemUse.subscribe((ev) => {
     const { itemStack, source } = ev;
     const itemId = itemStack.typeId;
+
+    if(itemId === "minecraft:clock") {
+        if(source.getGameMode() === GameMode.creative) source.setGameMode(GameMode.spectator);
+    }
 
     if(!source.isSneaking) return;
 
