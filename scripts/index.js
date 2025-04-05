@@ -3,7 +3,6 @@ import { ItemStack, world, system, Block, Player, EquipmentSlot, GameMode } from
 import { MinecraftEnchantmentTypes } from "./lib/index.js";
 import { getDropAmountWithFortune, getOreDropAmount, getOreDropItem, isAppropriateTool } from "./utils.js";
 import config from "./config.js";
-import toJson from "./toJson.js";
 
 /**
  * 
