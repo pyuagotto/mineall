@@ -3,6 +3,18 @@ import { ItemStack, world, system, Block, Player, EquipmentSlot, GameMode } from
 import { MinecraftEnchantmentTypes } from "./lib/index.js";
 import { getDropAmountWithFortune, getOreDropAmount, getOreDropItem, isAppropriateTool } from "./utils.js";
 import config from "./config.js";
+import toJson from "./toJson.js";
+
+const directions = [
+    { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }, // 東西南北
+    { x: 1, y: 0, z: 1 }, { x: -1, y: 0, z: 1 }, { x: 1, y: 0, z: -1 }, { x: -1, y: 0, z: -1 }, // 斜め
+    { x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 }, // 上下
+    { x: 1, y: 1, z: 0 }, { x: -1, y: 1, z: 0 }, { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: -1 }, // 上の斜め
+    { x: 1, y: 1, z: 1 }, { x: -1, y: 1, z: 1 }, { x: 1, y: 1, z: -1 }, { x: -1, y: 1, z: -1 }, // 上の斜め
+    { x: 1, y: -1, z: 0 }, { x: -1, y: -1, z: 0 }, { x: 0, y: -1, z: 1 }, { x: 0, y: -1, z: -1 }, // 下の斜め
+    { x: 1, y: -1, z: 1 }, { x: -1, y: -1, z: 1 }, { x: 1, y: -1, z: -1 }, { x: -1, y: -1, z: -1 } // 下の斜め
+];
+
 
 /**
  * 
@@ -10,22 +22,14 @@ import config from "./config.js";
  * @param {String} blockId
  * @param {String} itemId 
  * @param {Player} player 
+ * @param {ItemStack} itemStack
  * @param {Number} [fortuneLevel] 
  */
-const searchAllDirections = function*(block, blockId, itemId, player, fortuneLevel) {
-    const directions = [
-        { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }, // 東西南北
-        { x: 1, y: 0, z: 1 }, { x: -1, y: 0, z: 1 }, { x: 1, y: 0, z: -1 }, { x: -1, y: 0, z: -1 }, // 斜め
-        { x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 }, // 上下
-        { x: 1, y: 1, z: 0 }, { x: -1, y: 1, z: 0 }, { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: -1 }, // 上の斜め
-        { x: 1, y: 1, z: 1 }, { x: -1, y: 1, z: 1 }, { x: 1, y: 1, z: -1 }, { x: -1, y: 1, z: -1 }, // 上の斜め
-        { x: 1, y: -1, z: 0 }, { x: -1, y: -1, z: 0 }, { x: 0, y: -1, z: 1 }, { x: 0, y: -1, z: -1 }, // 下の斜め
-        { x: 1, y: -1, z: 1 }, { x: -1, y: -1, z: 1 }, { x: 1, y: -1, z: -1 }, { x: -1, y: -1, z: -1 } // 下の斜め
-    ];
-
+const searchAllDirections = function*(block, blockId, itemId, player, itemStack, fortuneLevel) {
     const queue = [block];
-
+    let i = 0;
     while (queue.length > 0) {
+        console.warn(`キューの長さ: ${queue.length}`);
         const currentBlock = queue.shift();
 
         if (!currentBlock) continue;
@@ -81,17 +85,73 @@ const searchAllDirections = function*(block, blockId, itemId, player, fortuneLev
     }
 };
 
+/**
+ * ブロックを合計何ブロック掘るかを出力する関数
+ * @param {Block} block 開始ブロック
+ * @param {String} blockId 掘る対象のブロックID
+ * @param {Player} player プレイヤー
+ * @returns {Number} 掘ったブロックの合計数
+ */
+const countMinedBlocks = function(block, blockId, player) {
+    const queue = [block];
+    const processedBlocks = new Set(); // 探索済みブロックをセットで管理
+    processedBlocks.add(JSON.stringify(block.location)); // ブロックの位置を文字列化して保存
+    console.warn(`最初のブロック: ${toJson(block.location)}`);
+    let blockCount = 0;
+    let i = 0;
+    while (queue.length > 0) {
+        const currentBlock = queue.shift();
+
+        if (!currentBlock) continue;
+
+        blockCount++; // 掘ったブロックをカウント
+
+        for (const direction of directions) {
+            const targetBlock = player.dimension.getBlock({
+                x: currentBlock.location.x + direction.x,
+                y: currentBlock.location.y + direction.y,
+                z: currentBlock.location.z + direction.z
+            });
+
+            if (!targetBlock) continue;
+
+            const isRedstoneOre = ["minecraft:lit_redstone_ore", "minecraft:redstone_ore"].includes(blockId) &&
+                                  ["minecraft:lit_redstone_ore", "minecraft:redstone_ore"].includes(targetBlock.typeId);
+
+            const isDeepslateRedstoneOre = ["minecraft:lit_deepslate_redstone_ore", "minecraft:deepslate_redstone_ore"].includes(blockId) &&
+                                           ["minecraft:lit_deepslate_redstone_ore", "minecraft:deepslate_redstone_ore"].includes(targetBlock.typeId);
+
+            const targetLocationKey = JSON.stringify(targetBlock.location);
+
+            // 未処理かつ同じブロックIDの場合のみキューに追加
+            if (!processedBlocks.has(targetLocationKey) &&
+                (isRedstoneOre || isDeepslateRedstoneOre || targetBlock.typeId === blockId)) {
+                processedBlocks.add(targetLocationKey);
+                queue.push(targetBlock);
+            }
+        }
+    }
+
+    console.warn(`処理の重複:${i}`)
+    console.warn(`合計で掘ったブロック数: ${blockCount}`);
+    return blockCount;
+};
+
 world.beforeEvents.playerBreakBlock.subscribe((ev) => {
     const { block, player, itemStack } = ev;
 
-    //if(player.getGameMode() !== GameMode.survival) return;
-    
+    /*+if(player.getGameMode() !== GameMode.survival) {
+        const vec = {x: 0, y: 0, z: 0};
+        console.warn(JSON.stringify(vec) === JSON.stringify({x: 0, y: 0, z: 0}));
+        
+        return
+    }*/
     //CutAll
     if(config.cutAll){
         const cutAll = player.getDynamicProperty("cutAll");
 
         if (cutAll && itemStack?.typeId.includes("_axe") && (block.typeId.includes("log") || block.typeId.includes("stem"))) {
-            system.runJob(searchAllDirections(block, block.typeId, block.typeId, player));
+            system.runJob(searchAllDirections(block, block.typeId, block.typeId, player, itemStack));
         }
     }
     
@@ -112,7 +172,7 @@ world.beforeEvents.playerBreakBlock.subscribe((ev) => {
     
                     if(["minecraft:lit_redstone_ore", "minecraft:lit_deepslate_redstone_ore"].includes(block.typeId)) itemId = block.typeId.replace("lit_","");
                     else itemId = block.typeId;
-                    system.runJob(searchAllDirections(block, block.typeId, itemId, player));
+                    system.runJob(searchAllDirections(block, block.typeId, itemId, player, itemStack));
                 } 
                 
                 //シルクタッチ以外
@@ -121,14 +181,16 @@ world.beforeEvents.playerBreakBlock.subscribe((ev) => {
                     
                     if (oreItem) {
                         const fortuneLevel = enchantable?.getEnchantment(MinecraftEnchantmentTypes.Fortune)?.level;
-                        system.runJob(searchAllDirections(block, block.typeId, oreItem, player, fortuneLevel));
+                        system.runJob(searchAllDirections(block, block.typeId, oreItem, player, itemStack, fortuneLevel));
                     }
                 }
             }
     
             //石系
             if (["minecraft:andesite", "minecraft:granite", "minecraft:diorite"].includes(block.typeId)) {
-                system.runJob(searchAllDirections(block, block.typeId, block.typeId, player));
+                countMinedBlocks(block, block.typeId, player);
+                //test()
+                //system.runJob(searchAllDirections(block, block.typeId, block.typeId, player, itemStack));
             }
         }
     }
